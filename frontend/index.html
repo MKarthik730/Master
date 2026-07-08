@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='64' fill='%233b82f6'/%3E%3Ctext x='256' y='340' font-size='280' font-family='system-ui' font-weight='bold' text-anchor='middle' fill='white'%3EG%3C/text%3E%3C/svg%3E">
+  <title>Study Gap Detector</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading Study Gap Detector...</div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app-root">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="app-title">
+        📚 GapDetector
+        <span class="badge">v0.1</span>
+      </div>
+    </header>
+
+    <!-- Domain Picker -->
+    <div class="domain-picker">
+      <label for="domain-select">Domain</label>
+      <select id="domain-select">
+        <option value="theory_of_computation">Theory of Computation</option>
+        <option value="dbms" disabled>DBMS (coming soon)</option>
+        <option value="os" disabled>OS (coming soon)</option>
+      </select>
+    </div>
+
+    <!-- Tab Bar -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="chat">
+        <span class="tab-icon">💬</span>
+        Chat
+      </button>
+      <button class="tab-btn" data-tab="gaps">
+        <span class="tab-icon">🔍</span>
+        Gaps
+      </button>
+      <button class="tab-btn" data-tab="graph">
+        <span class="tab-icon">🔗</span>
+        Graph
+      </button>
+    </nav>
+
+    <!-- Chat Tab -->
+    <div id="chat-tab" class="tab-content active">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input-area">
+        <textarea
+          id="chat-input"
+          placeholder="Ask a question about TOC..."
+          rows="1"
+        ></textarea>
+        <button id="send-btn" class="send-btn" aria-label="Send message">
+          ➤
+        </button>
+      </div>
+    </div>
+
+    <!-- Gaps Tab -->
+    <div id="gaps-tab" class="tab-content">
+      <div id="gaps-container"></div>
+    </div>
+
+    <!-- Graph Tab -->
+    <div id="graph-tab" class="tab-content">
+      <div class="graph-container">
+        <div id="graph-canvas"></div>
+      </div>
+      <div id="graph-legend" class="graph-legend">
+        <div class="legend-item"><span class="legend-dot covered"></span> Covering</div>
+        <div class="legend-item"><span class="legend-dot in-progress"></span> In Progress</div>
+        <div class="legend-item"><span class="legend-dot gap"></span> Gap</div>
+        <div class="legend-item"><span class="legend-dot unmapped"></span> Not Started</div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>
+        <span class="status-dot online"></span>
+        <span id="status-text">Initializing...</span>
+      </span>
+      <span>Domain: TOC</span>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <!-- ES Module Scripts -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
