@@ -26,3 +26,4 @@ pgdata/
 
 # Frontend
 node_modules/
+frontend/dist/
