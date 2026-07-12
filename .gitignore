@@ -21,6 +21,14 @@ backend/uploads/
 .DS_Store
 Thumbs.db
 
+# Database
+*.db
+*.db-wal
+*.db-shm
+
+# Docs
+backend/master_build_prompt.md
+
 # Docker
 pgdata/
 

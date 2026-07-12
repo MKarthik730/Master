@@ -1,0 +1,194 @@
+{
+  "roadmap": "Placement & Software Engineering Mastery — Full Depth",
+  "modules": [
+    {
+      "module": "Math & CS Foundations",
+      "topics": [
+        {
+          "id": "discrete_math", "title": "Discrete Mathematics", "prerequisites": [],
+          "subtopics": ["Set theory & functions", "Propositional & predicate logic", "Relations (equivalence, partial order)", "Combinatorics (permutations, combinations, pigeonhole)", "Graph theory basics", "Recurrence relations", "Number theory (GCD, modular arithmetic)"]
+        },
+        {
+          "id": "probability_stats", "title": "Probability & Statistics", "prerequisites": [],
+          "subtopics": ["Probability axioms & conditional probability", "Bayes' theorem", "Random variables & distributions (binomial, normal, poisson)", "Expectation & variance", "Hypothesis testing basics", "Correlation & regression basics"]
+        },
+        {
+          "id": "linear_algebra", "title": "Linear Algebra", "prerequisites": [],
+          "subtopics": ["Vectors & vector spaces", "Matrix operations", "Eigenvalues & eigenvectors", "Matrix decomposition (SVD basics)", "Dot product & cosine similarity (for embeddings)"]
+        },
+        {
+          "id": "toc_automata", "title": "Theory of Computation", "prerequisites": ["discrete_math"],
+          "subtopics": ["Finite automata (DFA/NFA)", "Regular expressions & Thompson's construction", "Context-free grammars & CNF/GNF", "Pushdown automata", "Turing machines", "Pumping lemma", "Decidability & halting problem", "P vs NP basics"]
+        }
+      ]
+    },
+    {
+      "module": "Programming Languages",
+      "topics": [
+        {
+          "id": "cpp_fundamentals", "title": "C++ Fundamentals", "prerequisites": [],
+          "subtopics": ["Pointers & references", "Memory management (stack/heap, new/delete)", "STL containers (vector, map, set, unordered_map)", "STL algorithms & iterators", "Templates & generics", "Move semantics & smart pointers"]
+        },
+        {
+          "id": "python_fundamentals", "title": "Python Fundamentals", "prerequisites": [],
+          "subtopics": ["Data structures (list, dict, set, tuple)", "Comprehensions & generators", "Decorators & context managers", "OOP in Python (dunder methods)", "Async/await & asyncio basics", "Virtual environments & packaging"]
+        },
+        {
+          "id": "oop_design", "title": "OOP & SOLID Design", "prerequisites": ["cpp_fundamentals"],
+          "subtopics": ["Encapsulation, inheritance, polymorphism", "Abstraction & interfaces", "Single Responsibility & Open/Closed", "Liskov Substitution & Interface Segregation", "Dependency Inversion", "Common design patterns (Factory, Singleton, Observer, Strategy)"]
+        }
+      ]
+    },
+    {
+      "module": "Developer Tools & Infrastructure",
+      "topics": [
+        {
+          "id": "git_version_control", "title": "Git & Version Control", "prerequisites": [],
+          "subtopics": ["Commits, branches, merging", "Rebase vs merge", "Resolving merge conflicts", "Interactive rebase & squashing", "Git workflows (feature branch, trunk-based)", "Stash, cherry-pick, revert vs reset", "Tags & releases"]
+        },
+        {
+          "id": "docker_ops", "title": "Docker (Practical Operations)", "prerequisites": ["os_fundamentals"],
+          "subtopics": ["Writing production Dockerfiles", "Image layer caching & optimization", "Docker Compose for local dev stacks", "Networking between containers", "Volume persistence & bind mounts", "Debugging running containers (exec, logs)"]
+        },
+        {
+          "id": "nginx_ops", "title": "Nginx", "prerequisites": ["cn_fundamentals"],
+          "subtopics": ["Reverse proxy configuration", "Load balancing (round robin, least conn)", "SSL/TLS termination", "Static file serving & caching headers", "Rate limiting & request throttling", "Config debugging (server blocks, locations)"]
+        },
+        {
+          "id": "postgres_ops", "title": "PostgreSQL (Practical Administration)", "prerequisites": ["dbms_fundamentals"],
+          "subtopics": ["Installation & connection config", "Roles & permissions", "Backup & restore (pg_dump/pg_restore)", "Connection pooling (PgBouncer)", "Monitoring slow queries", "Extensions (pgvector, pg_stat_statements)"]
+        },
+        {
+          "id": "redis_ops", "title": "Redis (Practical Operations)", "prerequisites": ["caching_redis"],
+          "subtopics": ["Data types in practice (strings, hashes, sorted sets)", "Persistence (RDB vs AOF)", "Pub/Sub messaging", "Redis as session store", "Cluster mode basics", "Monitoring & memory usage tuning"]
+        }
+      ]
+    },
+    {
+      "module": "Core CS Systems",
+      "topics": [
+        {
+          "id": "os_fundamentals", "title": "Operating Systems", "prerequisites": ["cpp_fundamentals"],
+          "subtopics": ["Processes vs threads", "CPU scheduling algorithms (FCFS, SJF, Round Robin, priority)", "Memory management & virtual memory", "Paging & segmentation", "Deadlocks (detection, prevention, avoidance)", "File systems basics", "Inter-process communication"]
+        },
+        {
+          "id": "os_concurrency", "title": "Concurrency Internals", "prerequisites": ["os_fundamentals"],
+          "subtopics": ["Locks, mutexes, semaphores", "Race conditions & critical sections", "Event loop model (Node.js)", "libuv internals", "Python GIL", "AsyncIO event loop", "Producer-consumer patterns"]
+        },
+        {
+          "id": "cn_fundamentals", "title": "Computer Networks", "prerequisites": [],
+          "subtopics": ["OSI & TCP/IP models", "TCP vs UDP", "HTTP/HTTPS & request lifecycle", "DNS resolution", "Sockets programming basics", "Load balancing concepts", "CDNs basics"]
+        },
+        {
+          "id": "dbms_fundamentals", "title": "DBMS Fundamentals", "prerequisites": [],
+          "subtopics": ["ER modeling", "Normalization (1NF-BCNF)", "Transactions & ACID properties", "Concurrency control (locking, MVCC)", "Joins & subqueries", "Views & stored procedures basics"]
+        },
+        {
+          "id": "dbms_indexing", "title": "Indexing & Query Optimization", "prerequisites": ["dbms_fundamentals"],
+          "subtopics": ["B-tree & B+tree indexes", "Hash indexes", "Query execution plans", "EXPLAIN ANALYZE usage", "Composite indexes & covering indexes", "N+1 query problem"]
+        }
+      ]
+    },
+    {
+      "module": "Data Structures & Algorithms",
+      "topics": [
+        {"id": "complexity_bigo", "title": "Complexity Analysis", "prerequisites": ["cpp_fundamentals"],
+          "subtopics": ["Big-O, Big-Theta, Big-Omega", "Time vs space tradeoffs", "Amortized analysis", "Recurrence relations & Master theorem"]},
+        {"id": "arrays_strings", "title": "Arrays & Strings", "prerequisites": ["complexity_bigo"],
+          "subtopics": ["Two-pointer technique", "Sliding window", "Prefix sums", "String matching (KMP, Rabin-Karp basics)", "In-place array manipulation"]},
+        {"id": "linked_lists", "title": "Linked Lists", "prerequisites": ["complexity_bigo"],
+          "subtopics": ["Singly & doubly linked lists", "Cycle detection (Floyd's)", "Reversal techniques", "Merge & sort operations on lists"]},
+        {"id": "stacks_queues", "title": "Stacks & Queues", "prerequisites": ["linked_lists"],
+          "subtopics": ["Monotonic stack problems", "Queue via stacks", "Deque applications", "Expression evaluation (infix/postfix)"]},
+        {"id": "trees_bst", "title": "Trees & BSTs", "prerequisites": ["stacks_queues"],
+          "subtopics": ["Tree traversals (in/pre/post-order, level-order)", "BST insert/delete/search", "Balanced trees (AVL, Red-Black overview)", "Lowest Common Ancestor", "Tree diameter & height problems"]},
+        {"id": "heaps_priority", "title": "Heaps & Priority Queues", "prerequisites": ["trees_bst"],
+          "subtopics": ["Min-heap/max-heap implementation", "Heapify operations", "Top-K problems", "Median-finding with two heaps"]},
+        {"id": "graphs_traversal", "title": "Graphs (Traversal)", "prerequisites": ["trees_bst"],
+          "subtopics": ["BFS & DFS implementation", "Connected components", "Topological sort (Kahn's, DFS-based)", "Bipartite graph check", "Cycle detection (directed/undirected)"]},
+        {"id": "graphs_advanced", "title": "Advanced Graphs", "prerequisites": ["graphs_traversal"],
+          "subtopics": ["Dijkstra's algorithm", "Bellman-Ford", "Floyd-Warshall", "Union-Find (Disjoint Set)", "Minimum Spanning Tree (Kruskal, Prim)", "Network flow basics"]},
+        {"id": "dp_patterns", "title": "Dynamic Programming", "prerequisites": ["arrays_strings", "trees_bst"],
+          "subtopics": ["1D DP (climbing stairs, house robber)", "2D DP (grid paths, edit distance)", "Knapsack variants (0/1, unbounded)", "Longest Increasing Subsequence family", "DP on trees", "DP on strings (LCS, palindromes)"]},
+        {"id": "greedy_backtracking", "title": "Greedy & Backtracking", "prerequisites": ["dp_patterns"],
+          "subtopics": ["Interval scheduling problems", "Greedy proof techniques", "N-Queens & permutations", "Subset generation", "Sudoku-style constraint backtracking"]},
+        {"id": "tries_segment_trees", "title": "Tries & Segment Trees", "prerequisites": ["graphs_advanced"],
+          "subtopics": ["Trie construction & search", "Autocomplete-style problems", "Segment tree build/query/update", "Fenwick tree (BIT)", "Range query optimization"]},
+        {"id": "interview_patterns", "title": "Interview Pattern Recognition", "prerequisites": ["greedy_backtracking", "tries_segment_trees"],
+          "subtopics": ["Pattern-to-problem mapping (75-150 curated set)", "Time-boxed mock solving", "Communication while solving (thinking out loud)", "Edge case identification habits"]}
+      ]
+    },
+    {
+      "module": "Backend & Scalable Systems",
+      "topics": [
+        {"id": "rest_api_design", "title": "REST API Design", "prerequisites": ["oop_design", "cn_fundamentals"],
+          "subtopics": ["Resource modeling & URI design", "HTTP methods & status codes", "Versioning strategies", "Pagination & filtering", "API documentation (OpenAPI/Swagger)"]},
+        {"id": "sql_advanced", "title": "Advanced SQL", "prerequisites": ["dbms_indexing"],
+          "subtopics": ["Window functions", "CTEs & recursive queries", "Query performance tuning", "Partitioning strategies", "ORM patterns (SQLAlchemy/TypeORM)"]},
+        {"id": "nosql_databases", "title": "NoSQL Databases", "prerequisites": ["dbms_fundamentals"],
+          "subtopics": ["Document stores (MongoDB modeling)", "Key-value stores", "Wide-column stores basics", "Graph databases basics", "CAP theorem tradeoffs per type"]},
+        {"id": "auth_security", "title": "Authentication & Security", "prerequisites": ["rest_api_design"],
+          "subtopics": ["Session vs token-based auth", "JWT structure & validation", "OAuth2 & OpenID Connect flow", "Password hashing (bcrypt/argon2)", "CSRF, XSS, SQL injection basics", "Rate limiting"]},
+        {"id": "caching_redis", "title": "Caching Strategies", "prerequisites": ["rest_api_design"],
+          "subtopics": ["Cache-aside, write-through, write-back patterns", "Redis data structures", "TTL & eviction policies (LRU, LFU)", "Cache invalidation strategies", "Distributed caching pitfalls"]},
+        {"id": "message_queues", "title": "Message Queues & Async Processing", "prerequisites": ["os_concurrency", "rest_api_design"],
+          "subtopics": ["Pub/sub vs point-to-point", "RabbitMQ exchanges & queues", "Kafka partitions & consumer groups", "At-least-once vs exactly-once delivery", "Dead letter queues"]},
+        {"id": "websockets_realtime", "title": "WebSockets & Real-time Systems", "prerequisites": ["rest_api_design"],
+          "subtopics": ["WebSocket handshake & lifecycle", "Long polling vs SSE vs WebSockets", "Scaling WebSocket connections", "Presence & heartbeat patterns"]},
+        {"id": "docker_containers", "title": "Docker & Containerization", "prerequisites": ["os_fundamentals"],
+          "subtopics": ["Images vs containers", "Dockerfile best practices", "Docker Compose multi-service setup", "Volumes & networking", "Multi-stage builds"]},
+        {"id": "kubernetes_deploy", "title": "Kubernetes & Deployment", "prerequisites": ["docker_containers"],
+          "subtopics": ["Pods, deployments, services", "ConfigMaps & Secrets", "Horizontal Pod Autoscaling", "Ingress & load balancing", "CI/CD pipeline basics"]}
+      ]
+    },
+    {
+      "module": "System Design",
+      "topics": [
+        {"id": "system_design_fundamentals", "title": "System Design Fundamentals", "prerequisites": ["cn_fundamentals", "dbms_fundamentals", "rest_api_design"],
+          "subtopics": ["CAP theorem", "Scalability (vertical vs horizontal)", "Availability & fault tolerance", "Consistency models (strong, eventual)", "Back-of-envelope estimation"]},
+        {"id": "sharding_replication", "title": "Sharding & Replication", "prerequisites": ["system_design_fundamentals", "sql_advanced"],
+          "subtopics": ["Horizontal vs vertical sharding", "Consistent hashing", "Master-slave replication", "Multi-master replication", "Replication lag handling"]},
+        {"id": "distributed_transactions", "title": "Distributed Transactions", "prerequisites": ["sharding_replication"],
+          "subtopics": ["Two-Phase Commit (2PC)", "Saga pattern (choreography vs orchestration)", "Idempotency in distributed calls", "Eventual consistency patterns", "Outbox pattern"]},
+        {"id": "microservices_design", "title": "Microservices Architecture", "prerequisites": ["distributed_transactions", "message_queues"],
+          "subtopics": ["Service decomposition strategies", "API gateway pattern", "Service discovery", "Circuit breaker pattern", "Distributed tracing basics"]},
+        {"id": "case_studies_hld", "title": "HLD Case Studies", "prerequisites": ["microservices_design", "caching_redis"],
+          "subtopics": ["URL shortener design", "Chat application design", "News feed / timeline system", "Rate limiter design", "Distributed file storage (S3-like)", "Notification system design"]}
+      ]
+    },
+    {
+      "module": "AI, LLMs & Agents",
+      "topics": [
+        {"id": "ml_fundamentals", "title": "ML Fundamentals", "prerequisites": ["linear_algebra", "probability_stats"],
+          "subtopics": ["Supervised vs unsupervised learning", "Gradient descent & loss functions", "Overfitting, regularization, cross-validation", "Bias-variance tradeoff", "Common models (linear/logistic regression, decision trees)"]},
+        {"id": "deep_learning_basics", "title": "Deep Learning Basics", "prerequisites": ["ml_fundamentals"],
+          "subtopics": ["Neural network architecture", "Backpropagation", "Activation functions", "CNN basics", "Transformer architecture overview"]},
+        {"id": "llm_fundamentals", "title": "LLM Fundamentals", "prerequisites": ["deep_learning_basics"],
+          "subtopics": ["Tokenization (BPE)", "Self-attention & multi-head attention", "Positional encoding", "Pretraining vs fine-tuning", "Context window & scaling laws basics"]},
+        {"id": "prompt_engineering", "title": "Prompt Engineering", "prerequisites": ["llm_fundamentals"],
+          "subtopics": ["Zero-shot vs few-shot prompting", "Chain-of-thought prompting", "System vs user prompts", "Structured output prompting", "Prompt injection awareness"]},
+        {"id": "rag_pipelines", "title": "RAG Pipelines", "prerequisites": ["prompt_engineering", "dbms_fundamentals"],
+          "subtopics": ["Dense retrieval (embeddings)", "Sparse retrieval (BM25)", "Hybrid retrieval fusion", "Reranking strategies", "Chunking strategies", "Vector databases (sqlite-vec, FAISS, pgvector)"]},
+        {"id": "ai_agents", "title": "AI Agents", "prerequisites": ["rag_pipelines"],
+          "subtopics": ["ReAct pattern (reasoning + acting)", "Tool use / function calling", "Multi-agent orchestration", "Memory in agents (short vs long-term)", "Agent evaluation & failure modes"]},
+        {"id": "local_llm_inference", "title": "Local LLM Inference", "prerequisites": ["llm_fundamentals"],
+          "subtopics": ["Quantization (GGUF, Q4_K_M etc.)", "GPU offloading (-ngl, VRAM management)", "Ollama / llama.cpp usage", "Inference speed vs quality tradeoffs", "Model selection for constrained hardware"]}
+      ]
+    },
+    {
+      "module": "Interview & Career Prep",
+      "topics": [
+        {"id": "resume_crafting", "title": "Resume Crafting", "prerequisites": [],
+          "subtopics": ["Project storytelling with impact metrics", "ATS-friendly formatting", "Tailoring resume per role", "Highlighting technical depth vs breadth"]},
+        {"id": "behavioral_star", "title": "Behavioral Interviews", "prerequisites": ["resume_crafting"],
+          "subtopics": ["STAR method structuring", "Conflict & failure stories", "Leadership & ownership stories", "Why-this-company answers"]},
+        {"id": "mock_coding_interviews", "title": "Mock Coding Interviews", "prerequisites": ["interview_patterns"],
+          "subtopics": ["Timed problem solving", "Explaining approach before coding", "Handling hints from interviewer", "Debugging live under pressure"]},
+        {"id": "system_design_interviews", "title": "System Design Interview Practice", "prerequisites": ["case_studies_hld"],
+          "subtopics": ["Requirement clarification framework", "Capacity estimation walkthroughs", "Trade-off articulation", "Whiteboard/diagramming practice"]},
+        {"id": "negotiation", "title": "Offer Evaluation & Negotiation", "prerequisites": ["behavioral_star", "mock_coding_interviews"],
+          "subtopics": ["Comparing total compensation", "Negotiation scripts", "Evaluating growth vs pay", "Handling multiple offers"]}
+      ]
+    }
+  ]
+}

@@ -1,19 +1,20 @@
-"""Hybrid retriever — combines dense (pgvector) + sparse (Postgres FTS).
+"""Hybrid retriever — combines dense (embedding cos-sim) + sparse (SQLite FTS5).
 
 Scores are normalised and combined via configurable weights.
-Technical terms (e.g. GNF, PDA) are handled by exact-match FTS.
+Technical terms (e.g. PDA, GNF, CFG) are handled by exact-match LIKE.
 """
 
+import json
 import logging
 import math
 from typing import Optional
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models import Chunk
-from app.services.embedding import embed_text
+from app.services.embedding import compute_similarity, embed_text
 
 logger = logging.getLogger(__name__)
 
@@ -24,16 +25,16 @@ async def dense_search(
     domain: str,
     top_k: int = None,
 ) -> list[dict]:
-    """Search chunks by pgvector cosine similarity.
+    """Search chunks by cosine similarity on JSON-stored embeddings.
 
-    Uses raw SQL for the vector distance since pgvector's Vector type
-    isn't directly supported in SQLAlchemy ORM.
+    Loads all embeddings for the domain and scores them in Python.
+    For larger datasets, this should be replaced with sqlite-vec.
     """
     top_k = top_k or settings.top_k_dense
     query_emb = embed_text(query_text)
-    emb_str = "[" + ",".join(str(v) for v in query_emb) + "]"
 
-    sql = text("""
+    # Fetch all chunks with embeddings for this domain
+    stmt = text("""
         SELECT
             c.id,
             c.content,
@@ -43,23 +44,23 @@ async def dense_search(
             c.document_id,
             d.title as document_title,
             d.domain,
-            1 - (c.embedding <=> :embedding::vector) AS similarity
+            c.embedding
         FROM chunks c
         JOIN documents d ON d.id = c.document_id
         WHERE d.domain = :domain
           AND c.embedding IS NOT NULL
-        ORDER BY c.embedding <=> :embedding::vector
-        LIMIT :top_k
     """)
+    result = await session.execute(stmt, {"domain": domain})
+    rows = [dict(row) for row in result.mappings().all()]
 
-    result = await session.execute(sql, {
-        "embedding": emb_str,
-        "domain": domain,
-        "top_k": top_k,
-    })
+    # Compute cosine similarity in Python
+    for row in rows:
+        row["similarity"] = compute_similarity(query_emb, row["embedding"])
+        del row["embedding"]
 
-    rows = result.mappings().all()
-    return [dict(row) for row in rows]
+    # Sort by similarity descending
+    rows.sort(key=lambda r: r["similarity"], reverse=True)
+    return rows[:top_k]
 
 
 async def sparse_search(
@@ -68,14 +69,14 @@ async def sparse_search(
     domain: str,
     top_k: int = None,
 ) -> list[dict]:
-    """Search chunks by PostgreSQL full-text search (tsv + plainto_tsquery).
+    """Search chunks by SQLite FTS5 full-text search.
 
     Also adds a LIKE-based exact-match fallback for technical terms
     that the stemmer might mangle (e.g. 'PDA', 'GNF', 'CFG').
     """
     top_k = top_k or settings.top_k_sparse
 
-    # Build tsquery from the query text
+    # FTS5 search via the chunks_fts virtual table
     sql = text("""
         SELECT
             c.id,
@@ -86,31 +87,36 @@ async def sparse_search(
             c.document_id,
             d.title as document_title,
             d.domain,
-            ts_rank(
-                to_tsvector('english', c.content),
-                plainto_tsquery('english', :query_text)
-            ) AS ts_rank
-        FROM chunks c
+            rank as ts_rank
+        FROM chunks_fts fts
+        JOIN chunks c ON c.id = fts.rowid
         JOIN documents d ON d.id = c.document_id
         WHERE d.domain = :domain
-          AND to_tsvector('english', c.content) @@ plainto_tsquery('english', :query_text)
-        ORDER BY ts_rank DESC
+          AND chunks_fts MATCH :query_text
+        ORDER BY rank
         LIMIT :top_k
     """)
 
-    result = await session.execute(sql, {
-        "query_text": query_text,
-        "domain": domain,
-        "top_k": top_k,
-    })
-    rows = [dict(row) for row in result.mappings().all()]
+    # Format query for FTS5 — use simple token matching
+    fts_query = " OR ".join(query_text.split())
+
+    try:
+        result = await session.execute(sql, {
+            "query_text": fts_query,
+            "domain": domain,
+            "top_k": top_k,
+        })
+        rows = [dict(row) for row in result.mappings().all()]
+    except Exception as e:
+        logger.warning("FTS5 search failed (trying LIKE fallback): %s", e)
+        rows = []
 
     # Exact-match supplement: if query contains uppercase terms that look
     # like acronyms, do a LIKE search
     terms = query_text.split()
     exact_terms = [t for t in terms if t.isupper() and len(t) <= 10]
-    if exact_terms:
-        like_patterns = "|".join(exact_terms)
+    if exact_terms or not rows:
+        like_pattern = "%" + "%".join(query_text.split()) + "%"
         like_sql = text("""
             SELECT
                 c.id,
@@ -125,13 +131,13 @@ async def sparse_search(
             FROM chunks c
             JOIN documents d ON d.id = c.document_id
             WHERE d.domain = :domain
-              AND c.content ~* :pattern
+              AND c.content LIKE :pattern
             ORDER BY c.chunk_index
             LIMIT :top_k
         """)
         like_result = await session.execute(like_sql, {
             "domain": domain,
-            "pattern": like_patterns,
+            "pattern": like_pattern,
             "top_k": top_k,
         })
         existing_ids = {r["id"] for r in rows}
@@ -177,12 +183,9 @@ async def hybrid_search(
     sparse_weight = sparse_weight or settings.sparse_weight
     final_k = final_k or settings.final_k
 
-    # Run both searches in parallel
-    import asyncio
-    dense_results, sparse_results = await asyncio.gather(
-        dense_search(session, query_text, domain, top_k_dense),
-        sparse_search(session, query_text, domain, top_k_sparse),
-    )
+    # Run both searches sequentially (async session doesn't support concurrent ops)
+    dense_results = await dense_search(session, query_text, domain, top_k_dense)
+    sparse_results = await sparse_search(session, query_text, domain, top_k_sparse)
 
     # Normalise scores
     dense_results = _normalise_scores(dense_results, "similarity", "dense_score")

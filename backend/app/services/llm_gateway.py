@@ -1,7 +1,7 @@
 """LLM Gateway — abstracts local (Ollama) and fallback (hosted API) LLM calls.
 
 Strategy:
-  1. Always try the small local model first (Ollama).
+  1. Always try the local model first (Ollama — Qwen2.5-3B Q4_K_M).
   2. If confidence/quality check fails, escalate to the larger model.
   3. Fallback model is configurable (OpenAI-compatible API by default).
 """
@@ -151,8 +151,8 @@ async def generate(
 ) -> LLMResponse:
     """Generate a response using the LLM gateway.
 
-    Tries the local model first; if quality check fails or local is
-    unavailable, falls back to the larger model.
+    Tries the local model first (Qwen2.5-3B via Ollama); if quality check
+    fails or local is unavailable, falls back to the larger model.
     """
     response = await _call_ollama(system_prompt, user_prompt, temperature=temperature)
 
@@ -218,3 +218,32 @@ async def generate_with_citations(
     )
 
     return await generate(full_system, full_user, temperature=temperature)
+
+
+async def check_ollama_model():
+    """Check if the configured Ollama model is available; if not, pull it."""
+    model = settings.ollama_model
+    url = f"{settings.ollama_base_url}/api/tags"
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            data = resp.json()
+            available_models = [m["name"] for m in data.get("models", [])]
+
+            # Check if model exists (handle :latest suffix)
+            if model not in available_models and not any(m.startswith(model.split(":")[0]) for m in available_models):
+                logger.info("Model '%s' not found locally. Pulling...", model)
+                pull_url = f"{settings.ollama_base_url}/api/pull"
+                async with httpx.AsyncClient(timeout=300.0) as pull_client:
+                    pull_resp = await pull_client.post(pull_url, json={"name": model})
+                    pull_resp.raise_for_status()
+                    logger.info("Model '%s' pulled successfully", model)
+                return True
+            else:
+                logger.info("Model '%s' is available locally", model)
+                return True
+    except httpx.RequestError as e:
+        logger.warning("Ollama not reachable: %s. Start Ollama and pull %s manually.", e, model)
+        return False

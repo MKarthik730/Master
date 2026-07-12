@@ -1,7 +1,7 @@
 """Sequential RAG pipeline: retrieve → rerank → generate.
 
 Each step is an async function called in sequence.
-For v2 this could be replaced with a proper LangGraph state graph.
+Includes confidence threshold check to prevent hallucination.
 """
 
 import logging
@@ -17,7 +17,7 @@ from app.services.reranker import rerank
 logger = logging.getLogger(__name__)
 
 
-# LangGraph state
+# RAG State
 class RAGState(TypedDict):
     query: str
     domain: str
@@ -65,6 +65,23 @@ async def generate_node(state: RAGState) -> dict:
             "response": LLMResponse(
                 content="No relevant chunks found to answer your question. "
                        "Try ingesting some textbook content first.",
+                model="none",
+                confidence=0.0,
+            )
+        }
+
+    # Check confidence threshold on the best chunk
+    best_chunk = state["reranked_chunks"][0]
+    rerank_score = best_chunk.get("rerank_score", 0) or best_chunk.get("combined_score", 0)
+
+    if rerank_score < settings.confidence_threshold:
+        logger.info(
+            "Confidence threshold check: best chunk score %.4f < %.4f — not found",
+            rerank_score, settings.confidence_threshold,
+        )
+        return {
+            "response": LLMResponse(
+                content="Not found in document — the uploaded materials don't contain enough relevant information to answer this question confidently.",
                 model="none",
                 confidence=0.0,
             )

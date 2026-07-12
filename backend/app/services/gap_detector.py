@@ -4,21 +4,26 @@ Pure logic: given progress and prerequisite graph, find topics that
 should have been studied but haven't been (gaps). Generates RAG-grounded
 explanations for why each gap matters.
 
-Important: The gap-detection logic is independent of how progress gets
-populated (hardcoded seed vs. user upload). It operates on the progress
-table and the graph only.
+Algorithm:
+  1. Build the dependency graph from syllabus JSON.
+  2. For each topic not marked 'covered', check if its prerequisites
+     are all covered.
+  3. If not all covered, flag each uncovered prerequisite as a gap.
+  4. Topics with uncovered prerequisites are 'locked'.
+  5. Topics whose prerequisites are all covered but not yet started are 'available'.
 """
 
 import logging
-from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.models import Progress, Topic, TopicEdge
-from app.services.hybrid_retrieval import hybrid_search
-from app.services.rag_pipeline import run_rag_pipeline
+from app.models import Progress, Topic, Subtopic
+from app.services.graph_service import (
+    get_prerequisites,
+    get_dependents,
+    get_subtopics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,109 +34,81 @@ async def detect_gaps(
 ) -> list[dict]:
     """Detect study gaps for a domain.
 
-    Algorithm:
-      1. Fetch all 'covered' topics from progress.
-      2. For each covered topic, find its prerequisites.
-      3. If a prerequisite is NOT covered, flag it as a gap.
-      4. Generate RAG-grounded explanation for each gap.
+    Returns list of gap dicts with:
+      topic, prerequisite_for, covered_by, explanation, suggested_order
     """
-    # Fetch covered topics
-    covered_stmt = select(Progress).where(
-        Progress.domain == domain,
-        Progress.status == "covered",
-    )
-    covered_result = await session.execute(covered_stmt)
-    covered_progress = covered_result.scalars().all()
-    covered_topic_ids = {p.topic_id for p in covered_progress}
-
-    if not covered_topic_ids:
-        return []
-
     # Fetch all topics for this domain
-    topics_stmt = select(Topic).where(Topic.domain == domain)
+    topics_stmt = select(Topic).where(Topic.domain == domain).order_by(Topic.sort_order)
     topics_result = await session.execute(topics_stmt)
-    all_topics = {
-        str(t.id): {"id": str(t.id), "name": t.name, "description": t.description or ""}
-        for t in topics_result.scalars().all()
-    }
+    all_topics = topics_result.scalars().all()
 
-    # Fetch all prerequisite edges for this domain's topics
-    edges_stmt = (
-        select(TopicEdge)
-        .join(Topic, TopicEdge.topic_id == Topic.id)
-        .where(Topic.domain == domain)
-        .options(
-            selectinload(TopicEdge.topic),
-            selectinload(TopicEdge.prerequisite),
-        )
-    )
-    edges_result = await session.execute(edges_stmt)
-    edges = edges_result.scalars().all()
+    # Get all progress records
+    progress_stmt = select(Progress).where(Progress.domain == domain)
+    progress_result = await session.execute(progress_stmt)
+    all_progress = progress_result.scalars().all()
 
-    # Build: for each covered topic, check if its prerequisites are covered
+    # Build covered set (topic-level + fully-covered subtopic-rolled-up)
+    covered_topic_ids = set()
+    in_progress_topic_ids = set()
+
+    for p in all_progress:
+        if p.subtopic_id is None and p.status == "covered":
+            covered_topic_ids.add(p.topic_id)
+
+    # Roll up subtopic progress to topic level
+    for t in all_topics:
+        if t.id in covered_topic_ids:
+            continue
+        subtopics = await get_subtopics(session, t.id)
+        if subtopics:
+            sub_progress = {}
+            for p in all_progress:
+                if p.subtopic_id is not None:
+                    stmt = select(Subtopic).where(Subtopic.id == p.subtopic_id)
+                    sub_result = await session.execute(stmt)
+                    sub = sub_result.scalar_one_or_none()
+                    if sub and sub.topic_id == t.id:
+                        sub_progress[p.subtopic_id] = p.status
+
+            if len(sub_progress) == len(subtopics) and all(s == "covered" for s in sub_progress.values()):
+                covered_topic_ids.add(t.id)
+            elif any(s in ("covered", "in_progress") for s in sub_progress.values()):
+                in_progress_topic_ids.add(t.id)
+
+    # Detect gaps: find topics whose prerequisites aren't covered
     gaps = []
-    seen_gap_topics: set[str] = set()
+    seen_gap_topic_ids: set[int] = set()
 
-    for edge in edges:
-        topic_id = str(edge.topic_id)
-        prereq_id = str(edge.prerequisite_id)
+    for topic in all_topics:
+        if topic.id in covered_topic_ids:
+            continue
 
-        if topic_id in covered_topic_ids and prereq_id not in covered_topic_ids:
-            if prereq_id not in seen_gap_topics:
-                seen_gap_topics.add(prereq_id)
+        prereqs = await get_prerequisites(session, topic.id)
+        for prereq in prereqs:
+            if prereq.id not in covered_topic_ids:
+                if prereq.id not in seen_gap_topic_ids:
+                    seen_gap_topic_ids.add(prereq.id)
+                    dependents = await get_dependents(session, prereq.id)
+                    prereq_for = [t.title for t in dependents if t.id != prereq.id]
 
-                prereq_topic = all_topics.get(
-                    prereq_id, {"id": prereq_id, "name": "Unknown", "description": ""}
-                )
-                topic_name = all_topics.get(topic_id, {}).get("name", "Unknown")
+                    gaps.append({
+                        "topic": {
+                            "id": str(prereq.id),
+                            "name": prereq.title,
+                            "description": prereq.description or "",
+                            "module": prereq.module,
+                        },
+                        "prerequisite_for": prereq_for,
+                        "covered_by": [],
+                        "explanation": (
+                            f"{prereq.title} is a prerequisite for {', '.join(prereq_for) if prereq_for else 'other topics'}. "
+                            f"Complete {prereq.title} before moving on."
+                        ),
+                        "suggested_order": len(gaps) + 1,
+                    })
+                break  # Don't add multiple gaps for the same topic
 
-                gap = {
-                    "topic": prereq_topic,
-                    "prerequisite_for": [topic_name],
-                    "covered_by": [],
-                    "explanation": "",
-                    "suggested_order": len(gaps) + 1,
-                }
-                gaps.append(gap)
-            else:
-                for g in gaps:
-                    if g["topic"]["id"] == prereq_id:
-                        topic_name = all_topics.get(topic_id, {}).get("name", "Unknown")
-                        if topic_name not in g["prerequisite_for"]:
-                            g["prerequisite_for"].append(topic_name)
-                        break
-
-    # Generate RAG-grounded explanations for each gap
-    for gap in gaps:
-        gap["explanation"] = await _generate_gap_explanation(
-            session, domain, gap["topic"], gap["prerequisite_for"]
-        )
+    # Sort gaps by suggested order
+    gaps.sort(key=lambda g: g["suggested_order"])
 
     return gaps
-
-
-async def _generate_gap_explanation(
-    session: AsyncSession,
-    domain: str,
-    topic: dict,
-    prerequisite_for: list[str],
-) -> str:
-    """Generate a RAG-grounded explanation of why this gap matters."""
-    topic_name = topic.get("name", "")
-    topic_desc = topic.get("description", "")
-
-    query = (
-        f"What is {topic_name} and why is it important as a foundation for "
-        f"understanding {', '.join(prerequisite_for)}? "
-        f"Context: {topic_desc}"
-    )
-
-    try:
-        result = await run_rag_pipeline(query, domain, session)
-        answer = result.get("answer", "")
-        if len(answer) > 1000:
-            answer = answer[:1000] + "..."
-        return answer
-    except Exception as e:
-        logger.error("Failed to generate gap explanation: %s", e)
-        return f"{topic_name} is a prerequisite for {', '.join(prerequisite_for)}. Study this topic before proceeding."

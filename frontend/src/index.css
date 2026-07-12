@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-base-600; }
+  body {
+    @apply bg-base-900 text-base-100 font-sans antialiased;
+    min-height: 100dvh;
+  }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-base-500 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-base-400; }
+}
+
+@layer components {
+  .nav-btn {
+    @apply w-full flex flex-col items-center gap-1 py-3 px-2 text-base-200
+           hover:text-white hover:bg-base-700 transition-all duration-200
+           rounded-lg cursor-pointer relative text-[10px] font-medium;
+  }
+  .nav-btn.active {
+    @apply text-accent;
+  }
+  .nav-btn.active::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-accent rounded-r;
+  }
+  .panel {
+    @apply bg-surface border-l border-base-600 h-full overflow-y-auto;
+  }
+  .card {
+    @apply bg-base-800 rounded-xl border border-base-600 p-4;
+  }
+  .card-hover {
+    @apply hover:border-base-400 transition-colors duration-200;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+           text-[11px] font-medium bg-base-700 text-base-200;
+  }
+  .input-base {
+    @apply w-full bg-base-800 border border-base-600 rounded-xl px-4 py-3
+           text-white placeholder:text-base-300 focus:outline-none
+           focus:border-accent focus:ring-1 focus:ring-accent/30
+           transition-all duration-200;
+  }
+  .btn-primary {
+    @apply bg-accent hover:bg-accent-dark text-white font-medium
+           px-5 py-2.5 rounded-xl transition-all duration-200
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply hover:bg-base-700 text-base-200 hover:text-white
+           px-3 py-2 rounded-lg transition-all duration-200;
+  }
+  .tooltip {
+    @apply absolute z-50 px-3 py-2 bg-base-700 border border-base-500
+           rounded-lg text-xs text-white shadow-xl pointer-events-none;
+  }
+  .progress-ring {
+    @apply transition-all duration-500 ease-out;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+}

@@ -1,11 +1,9 @@
-"""Topic and TopicEdge models — the knowledge graph."""
+"""Topic and TopicEdge models — the knowledge graph for syllabus tracking."""
 
-import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -14,16 +12,17 @@ from app.database import Base
 class Topic(Base):
     __tablename__ = "topics"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(500), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=True)
-    source: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="manual"
+    module: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    topic_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, comment="Unique ID from syllabus JSON (e.g., 'discrete_math')"
     )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="syllabus")
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -46,17 +45,15 @@ class Topic(Base):
 class TopicEdge(Base):
     __tablename__ = "topic_edges"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    topic_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
     )
-    topic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
-    )
-    prerequisite_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
+    prerequisite_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
     )
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
-    source: Mapped[str] = mapped_column(String(50), default="manual")
+    source: Mapped[str] = mapped_column(String(50), default="syllabus")
 
     topic = relationship(
         "Topic", foreign_keys=[topic_id], back_populates="incoming_edges"
@@ -64,3 +61,18 @@ class TopicEdge(Base):
     prerequisite = relationship(
         "Topic", foreign_keys=[prerequisite_id], back_populates="outgoing_edges"
     )
+
+
+class Subtopic(Base):
+    """Individual subtopic within a topic — tracks granular progress."""
+
+    __tablename__ = "subtopics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    topic_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("topics.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    subtopic_index: Mapped[int] = mapped_column(Integer, default=0)
+
+    topic = relationship("Topic", backref="subtopics")

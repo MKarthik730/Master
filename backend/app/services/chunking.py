@@ -18,7 +18,7 @@ HEADING_PATTERNS = [
     re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE),  # Markdown headings
     re.compile(r"^(?:Section|Chapter|Topic)\s+[\d.]+[:\s]*(.+)$", re.MULTILINE | re.IGNORECASE),
     re.compile(r"^(\d+\.\d+\s+.*)$", re.MULTILINE),  # "1.1 Introduction"
-    re.compile(r"^(?:[A-Z][A-Z\s]+)$", re.MULTILINE),  # ALL CAPS headings
+    re.compile(r"^([A-Z][A-Z\s]+)$", re.MULTILINE),  # ALL CAPS headings
 ]
 
 # Simple token counter (words + punctuation roughly)

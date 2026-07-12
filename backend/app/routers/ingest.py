@@ -8,11 +8,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.config import settings
+from app.database import get_db, rebuild_fts_index
 from app.models import Document, Chunk
 from app.services.chunking import chunk_text
-from app.services.embedding import embed_texts, embedding_to_pgvector
-from app.config import settings
+from app.database import embedding_to_json
+from app.services.embedding import embed_texts
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 class IngestResponse(BaseModel):
-    document_id: str
+    document_id: int
     title: str
     chunks_created: int
     domain: str
@@ -52,7 +53,7 @@ async def ingest_pdf(
 ):
     """Upload and ingest a textbook PDF into the RAG corpus.
 
-    Text is extracted, chunked, embedded, and stored synchronously.
+    Text is extracted, chunked, embedded, and stored.
     Returns the document ID and number of chunks created.
     """
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -100,15 +101,19 @@ async def ingest_pdf(
             section_heading=chunk_info.get("section_heading", ""),
             chunk_index=i,
             token_count=chunk_info.get("token_count", 0),
-            embedding=embedding_to_pgvector(embedding),
+            embedding=embedding_to_json(embedding),
         )
         session.add(chunk)
 
     await session.flush()
+
+    # Rebuild FTS index
+    await rebuild_fts_index(session)
+
     logger.info("Ingested %d chunks from %s", len(chunks_data), file.filename)
 
     return IngestResponse(
-        document_id=str(document.id),
+        document_id=document.id,
         title=file.filename,
         chunks_created=len(chunks_data),
         domain=domain,

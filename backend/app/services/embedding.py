@@ -1,13 +1,17 @@
 """Embedding service using sentence-transformers (bge-small-en-v1.5).
 
 Singleton model loading — model is loaded once and reused.
+Stores embeddings as JSON strings for SQLite compatibility.
 """
 
+import json
 import logging
-from typing import list
+from typing import Optional
 
 import numpy as np
 from app.config import settings
+
+from app.database import cosine_similarity, json_to_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -44,9 +48,10 @@ def embed_texts(texts: list[str], batch_size: int = 32) -> list[list[float]]:
     return [emb.tolist() for emb in embeddings]
 
 
-def embedding_to_pgvector(embedding: list[float]) -> str:
-    """Format embedding as a pgvector-compatible string literal.
-
-    Produces: '[0.1,0.2,0.3,...]' suitable for use in raw SQL.
-    """
-    return "[" + ",".join(str(v) for v in embedding) + "]"
+def compute_similarity(query_emb: list[float], stored_emb_str: str) -> float:
+    """Compute cosine similarity between query embedding and stored JSON embedding."""
+    try:
+        stored_emb = json_to_embedding(stored_emb_str)
+        return cosine_similarity(query_emb, stored_emb)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return 0.0

@@ -1,15 +1,14 @@
-"""Progress endpoints — get current study progress for a domain."""
+"""Progress endpoints — get/update study progress for the syllabus tracker."""
 
-from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.database import get_db
-from app.models import Progress, Topic
+from app.models import Progress, Topic, Subtopic
+from app.services.graph_service import get_subtopics, get_topic_tree
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -18,83 +17,100 @@ class ProgressItem(BaseModel):
     topic_id: str
     topic_name: str
     status: str
-    source: str
-    updated_at: str
+    subtopic_progress: list[dict] = []
 
 
-class ProgressResponse(BaseModel):
+class TopicTreeNode(BaseModel):
+    id: int
+    topic_id: str
+    title: str
+    module: str
+    status: str
+    subtopics: list[dict] = []
+    prerequisites: list[str] = []
+    prerequisite_titles: list[str] = []
+
+
+class TopicTreeResponse(BaseModel):
     domain: str
+    modules: list[dict]  # [{ "name": str, "topics": [TopicTreeNode] }]
     total_topics: int
     covered: int
     in_progress: int
-    gap_count: int
-    topics: list[ProgressItem]
+    locked: int
+    available: int
 
 
-@router.get("/{domain}", response_model=ProgressResponse)
-async def get_progress(
-    domain: str,
+@router.get("/tree", response_model=TopicTreeResponse)
+async def get_progress_tree(
+    domain: str = settings.default_domain,
     session: AsyncSession = Depends(get_db),
 ):
-    """Get current progress state for a domain.
+    """Get the full topic tree with progress status for the syllabus tracker."""
+    tree = await get_topic_tree(session, domain)
 
-    Joins Progress with Topic to return topic names alongside status.
-    """
-    # Get all topics for the domain
-    total_stmt = select(Topic).where(Topic.domain == domain)
-    total_result = await session.execute(total_stmt)
-    all_topics = {str(t.id): t.name for t in total_result.scalars().all()}
+    # Group by module
+    module_map: dict[str, list] = {}
+    for node in tree:
+        mod = node["module"]
+        if mod not in module_map:
+            module_map[mod] = []
+        module_map[mod].append(TopicTreeNode(**node))
 
-    # Get progress records with topic names via join
-    progress_stmt = (
-        select(Progress, Topic.name.label("topic_name"))
-        .join(Topic, Progress.topic_id == Topic.id, isouter=True)
-        .where(Progress.domain == domain)
-    )
-    result = await session.execute(progress_stmt)
-    rows = result.mappings().all()
+    modules = [
+        {"name": name, "topics": topics}
+        for name, topics in module_map.items()
+    ]
 
-    topics_list = []
-    for row in rows:
-        topics_list.append(
-            ProgressItem(
-                topic_id=str(row["topic_id"]),
-                topic_name=row["topic_name"] or "Unknown",
-                status=row["status"],
-                source=row["source"],
-                updated_at=row["updated_at"].isoformat() if row["updated_at"] else "",
-            )
-        )
+    covered = sum(1 for t in tree if t["status"] == "covered")
+    in_progress = sum(1 for t in tree if t["status"] == "in_progress")
+    locked = sum(1 for t in tree if t["status"] == "locked")
+    available = sum(1 for t in tree if t["status"] == "available")
 
-    covered = sum(1 for r in rows if r["status"] == "covered")
-    in_progress = sum(1 for r in rows if r["status"] == "in_progress")
-    gap_count = sum(1 for r in rows if r["status"] == "gap")
-
-    return ProgressResponse(
+    return TopicTreeResponse(
         domain=domain,
-        total_topics=len(all_topics),
+        modules=modules,
+        total_topics=len(tree),
         covered=covered,
         in_progress=in_progress,
-        gap_count=gap_count,
-        topics=topics_list,
+        locked=locked,
+        available=available,
     )
 
 
-class UpdateProgressRequest(BaseModel):
-    topic_id: str = Field(..., description="UUID of the topic")
-    status: str = Field(..., pattern="^(covered|in_progress|gap)$")
+class UpdateSubtopicRequest(BaseModel):
+    subtopic_id: int
+    status: str = Field(..., pattern="^(covered|in_progress|locked)$")
 
 
-@router.post("/{domain}/update")
-async def update_progress(
+class UpdateSubtopicResponse(BaseModel):
+    subtopic_id: int
+    status: str
+    topic_status: str
+    topic_progress: float  # 0.0 - 1.0
+
+
+@router.post("/{domain}/subtopic", response_model=UpdateSubtopicResponse)
+async def update_subtopic_progress(
     domain: str,
-    request: UpdateProgressRequest,
+    request: UpdateSubtopicRequest,
     session: AsyncSession = Depends(get_db),
 ):
-    """Update progress status for a specific topic."""
+    """Update progress for a single subtopic.
+
+    Returns the updated topic status and progress percentage.
+    """
+    # Check subtopic exists
+    sub_stmt = select(Subtopic).where(Subtopic.id == request.subtopic_id)
+    sub_result = await session.execute(sub_stmt)
+    subtopic = sub_result.scalar_one_or_none()
+    if not subtopic:
+        raise HTTPException(status_code=404, detail="Subtopic not found")
+
+    # Upsert progress
     stmt = select(Progress).where(
         Progress.domain == domain,
-        Progress.topic_id == UUID(request.topic_id),
+        Progress.subtopic_id == request.subtopic_id,
     )
     result = await session.execute(stmt)
     progress = result.scalar_one_or_none()
@@ -104,11 +120,39 @@ async def update_progress(
     else:
         progress = Progress(
             domain=domain,
-            topic_id=UUID(request.topic_id),
+            topic_id=subtopic.topic_id,
+            subtopic_id=request.subtopic_id,
             status=request.status,
             source="manual_entry",
         )
         session.add(progress)
 
     await session.flush()
-    return {"status": "updated"}
+
+    # Compute topic-level status
+    all_subtopics = await get_subtopics(session, subtopic.topic_id)
+    sub_stmt = select(Progress).where(
+        Progress.topic_id == subtopic.topic_id,
+        Progress.domain == domain,
+        Progress.subtopic_id.isnot(None),
+    )
+    sub_result = await session.execute(sub_stmt)
+    sub_progress = sub_result.scalars().all()
+    sub_status_map = {p.subtopic_id: p.status for p in sub_progress}
+
+    covered_count = sum(1 for s in all_subtopics if sub_status_map.get(s.id) == "covered")
+    topic_progress = covered_count / len(all_subtopics) if all_subtopics else 0.0
+
+    if topic_progress >= 1.0:
+        topic_status = "covered"
+    elif topic_progress > 0:
+        topic_status = "in_progress"
+    else:
+        topic_status = "available"
+
+    return UpdateSubtopicResponse(
+        subtopic_id=request.subtopic_id,
+        status=request.status,
+        topic_status=topic_status,
+        topic_progress=topic_progress,
+    )

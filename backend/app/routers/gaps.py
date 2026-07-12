@@ -1,9 +1,10 @@
 """Gap detection endpoints — computed gaps with explanations."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.services.gap_detector import detect_gaps
 
@@ -14,6 +15,7 @@ class GapTopic(BaseModel):
     id: str
     name: str
     description: str = ""
+    module: str = ""
 
 
 class GapItem(BaseModel):
@@ -35,7 +37,9 @@ async def get_gaps(
     domain: str,
     session: AsyncSession = Depends(get_db),
 ):
-    """Get computed study gaps with RAG-grounded explanations."""
+    """Get computed study gaps."""
+    if domain == "default":
+        domain = settings.default_domain
     gaps = await detect_gaps(session, domain)
 
     return GapsResponse(

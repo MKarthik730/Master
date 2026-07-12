@@ -12,7 +12,7 @@ router = APIRouter(prefix="/query", tags=["query"])
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    domain: str = Field(default="theory_of_computation", max_length=255)
+    domain: str = Field(default="placement_mastery", max_length=255)
 
 
 class Citation(BaseModel):
