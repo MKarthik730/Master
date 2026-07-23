@@ -3,6 +3,11 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install system dependencies
+# libpq-dev and gcc are required for psycopg2 (PostgreSQL adapter) — the Docker
+# Compose setup runs against PostgreSQL 16 with pgvector. When running outside
+# Docker with SQLite, these are not needed.
+# Note: if you change REQUIREMENTS to use asyncpg instead of psycopg2 for
+# async support, libpq-dev is still needed for pgvector support.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
