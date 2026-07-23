@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ProgressTree, GraphData, Topic, Module, Message, StudyBlock, UploadDoc, Gap } from './types'
+import type { ProgressTree, GraphData, Topic, Module, Subtopic, Message, StudyBlock, UploadDoc, Gap } from './types'
 
 interface AppState {
   // Domain

@@ -25,6 +25,36 @@ export default function SchedulerView() {
   const [dragOverDay, setDragOverDay] = useState<number | null>(null)
   const [dragOverHour, setDragOverHour] = useState<number | null>(null)
 
+  // Resizable sidebar
+  const [sidebarWidth, setSidebarWidth] = useState(224)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startX - moveEvent.clientX
+      const newWidth = Math.max(160, Math.min(480, startWidth + delta))
+      setSidebarWidth(newWidth)
+    }
+
+    const onMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [sidebarWidth])
+
   const allTopics = useMemo(() => progressTree?.modules.flatMap(m => m.topics) ?? [], [progressTree])
   const gapTopics = useMemo(() => allTopics.filter(t => t.status === 'locked'), [allTopics])
   const suggestedBlocks = useMemo(() => gapTopics.sort((a, b) => b.prerequisites.length - a.prerequisites.length).slice(0, 5), [gapTopics])
@@ -47,7 +77,7 @@ export default function SchedulerView() {
   }
 
   // Drag from suggested blocks
-  const onDragStart = (e: React.DragEvent, topicId: string, topicTitle: string) => {
+  const handleDragStart = (e: React.DragEvent, topicId: string, topicTitle: string) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({ topicId, topicTitle }))
     e.dataTransfer.effectAllowed = 'copy'
   }
@@ -134,8 +164,17 @@ export default function SchedulerView() {
           </div>
         </div>
 
+        {/* Resize handle */}
+        <div
+          className={`w-1.5 flex-shrink-0 cursor-col-resize relative transition-colors hover:bg-accent/40 active:bg-accent/60 ${isResizing ? 'bg-accent/60' : 'bg-transparent'}`}
+          onMouseDown={handleResizeStart}
+        >
+          <div className="absolute inset-y-0 left-0 w-px bg-base-600" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-base-400/60 transition-colors" />
+        </div>
+
         {/* Sidebar */}
-        <div className="w-56 flex-shrink-0 border-l border-base-600 p-3 overflow-y-auto">
+        <div className="flex-shrink-0 border-l border-base-600 p-3 overflow-y-auto" style={{ width: sidebarWidth }}>
           <h3 className="text-[10px] font-medium text-base-300 uppercase tracking-wider mb-3">Suggested from gaps</h3>
           <div className="space-y-2">
             {suggestedBlocks.map(t => {
@@ -143,7 +182,7 @@ export default function SchedulerView() {
               return (
                 <motion.div key={t.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   className="card !p-2.5 cursor-grab active:cursor-grabbing hover:border-amber/30 transition-colors"
-                  draggable onDragStart={e => onDragStart(e, t.topic_id, t.title)}>
+                  draggable onDragStart={e => handleDragStart(e as unknown as React.DragEvent, t.topic_id, t.title)}>
                   <div className="text-[11px] font-medium text-white mb-0.5">{t.title}</div>
                   <div className="text-[9px] text-base-400">
                     {dependents.length} dependents · {t.subtopics.filter(s => s.status === 'covered').length}/{t.subtopics.length} done

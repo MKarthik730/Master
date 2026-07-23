@@ -55,7 +55,7 @@ The PWA can be installed to your phone's home screen for a native-like experienc
 
 ## Configuration
 
-Copy `backend/.env.example` to `backend/.env` and adjust:
+Copy `.env.example` to `.env` (or `backend/.env`) and adjust:
 
 ```bash
 # Required: set your fallback API key for higher quality answers
